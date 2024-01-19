@@ -1,9 +1,13 @@
 // A lot of functions in here were pulled from HEN-V, credits to astrelsky for most of this
+
+
+
 #include <ps5/kernel.h>
 #include <elf.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include "mdbg.h"
 #include "utils.h"
 #include "process_utils.h"
 
@@ -12,6 +16,7 @@
 #define LIB_HANDLE_OFFSET 0x28
 #define METADATA_PLT_HELPER_OFFSET 0x28
 #define NID_LENGTH 11
+#define PROC_UCRED_OFFSET 0x40
 
 typedef struct {
 	uintptr_t symtab;
@@ -350,3 +355,77 @@ int sys_proc_protect_by_name(int pid, const char* name, int prot) {
 	
     return 1;
 }
+
+uintptr_t proc_get_ucred(uintptr_t proc) {
+	uintptr_t ucred = 0;
+	kernel_copyout(proc + PROC_UCRED_OFFSET, &ucred, sizeof(ucred));
+	return ucred;
+}
+
+// struct elf_params {
+// 	dlsym_t* dlsym;             // 0x00
+// 	uint64_t processBaseAddress;// 0x08
+// };
+
+// int proc_create_thread(tracer_t* tracer, int pid, uint64_t address) {
+// 	void *rpcldraddr = 0;
+//     void *stackaddr = 0;
+// 	void *paramAddr = 0;
+
+//     uint64_t ldrsize = sizeof(rpcldr);
+//     ldrsize += (PAGE_SIZE - (ldrsize % PAGE_SIZE));
+    
+//     uint64_t stacksize = 0x80000;
+
+//     // allocate rpc ldr
+// 	rpcldraddr = sys_proc_alloc(tracer, pid, ldrsize);
+// 	sys_proc_protect(pid, rpcldraddr, 0x7);
+
+//     // allocate stack
+// 	stackaddr = sys_proc_alloc(tracer, pid, stacksize);
+// 	sys_proc_protect(pid, stackaddr, 0x7);
+
+// 	paramAddr = sys_proc_alloc(tracer, pid, sizeof(struct elf_params));
+// 	sys_proc_protect(pid, paramAddr, 0x7);
+
+//     // write loader
+// 	userland_copyin(pid, (void*)rpcldr, rpcldraddr, sizeof(rpcldr));
+
+// 	uint64_t proc = get_proc(pid);
+// 	uint64_t libKernel = proc_get_lib(proc, 0x2001);
+
+//     uint64_t _scePthreadAttrInit = shared_lib_get_address(libKernel, "nsYoNRywwNg");
+// 	uint64_t _scePthreadAttrSetstacksize = shared_lib_get_address(libKernel, "UTXzJbWhhTE");
+// 	uint64_t _scePthreadCreate = shared_lib_get_address(libKernel, "6UgtwV+0zb4");
+// 	uint64_t _thr_initial = libKernel + 0x0000000000095E98;
+// 	uint64_t _scePthreadAttrSetstackaddr = shared_lib_get_address(libKernel, "F+yfmduIBB8");
+
+//     if (!_scePthreadAttrInit) {
+// 		return 1;
+//     }
+
+//     // write variables
+// 	userland_copyin(pid, &address, rpcldraddr + offsetof(struct rpcldr_header, stubentry), sizeof(address));
+//     userland_copyin(pid, &_scePthreadAttrInit, rpcldraddr + offsetof(struct rpcldr_header, scePthreadAttrInit), sizeof(_scePthreadAttrInit));
+// 	userland_copyin(pid, &_scePthreadAttrSetstacksize, rpcldraddr + offsetof(struct rpcldr_header, scePthreadAttrSetstacksize), sizeof(_scePthreadAttrSetstacksize));
+// 	userland_copyin(pid, &_scePthreadCreate, rpcldraddr + offsetof(struct rpcldr_header, scePthreadCreate), sizeof(_scePthreadCreate));
+// 	userland_copyin(pid, &_thr_initial, rpcldraddr + offsetof(struct rpcldr_header, thr_initial), sizeof(_thr_initial));
+
+	
+
+//     // execute loader
+//     // note: do not enter in the pid information as it expects it to be stored in userland
+//     uint64_t ldrentryaddr = (uint64_t)rpcldraddr + *(uint64_t *)(rpcldr + 4);
+//     r = create_thread(thr, NULL, (void *)ldrentryaddr, NULL, stackaddr, stacksize, NULL, NULL, NULL, 0, NULL);
+//     if (r) {
+// 		return 1;
+//     }
+
+//     // wait until loader is done
+//     uint8_t ldrdone = 0;
+//     while (!ldrdone) {
+// 		userland_copyout(pid, (rpcldraddr + offsetof(struct rpcldr_header, ldrdone)), &ldrdone, sizeof(ldrdone));
+//     }
+
+//     return 0;
+// }

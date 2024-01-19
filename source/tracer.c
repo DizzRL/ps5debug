@@ -1,9 +1,10 @@
-// Credits to astrelsky: https://github.com/astrelsky/HEN-V/blob/master/spawner/source/tracer.c
+// // Credits to astrelsky: https://github.com/astrelsky/HEN-V/blob/master/spawner/source/tracer.c
 #include "process_utils.h"
 #include "proc.h"
 #include "mdbg.h"
-#include "libs.h"
 #include "tracer.h"
+#include "auth.h"
+#include "ucred.h"
 
 #include <ps5/kernel.h>
 #include <errno.h>
@@ -51,6 +52,13 @@ static void set_args(reg_t *restrict regs, uintptr_t a, uintptr_t b, uintptr_t c
 	regs->r_r9 = (register_t) f;
 }
 
+int trace(int request, pid_t pid, caddr_t addr, int data) {
+	uint64_t id = ucred_swap_authid(get_current_ucred(), PTRACE_ID);
+	int res = ptrace(request, pid, addr, data);
+	ucred_swap_authid(get_current_ucred(), id);
+    return res;
+}
+
 uintptr_t tracer_call(tracer_t *restrict self, uintptr_t addr, uintptr_t a, uintptr_t b, uintptr_t c, uintptr_t d, uintptr_t e, uintptr_t f) {
 	if (addr == 0) {
 		errno = EINVAL;
@@ -63,35 +71,12 @@ uintptr_t tracer_call(tracer_t *restrict self, uintptr_t addr, uintptr_t a, uint
 	set_args(&jmp, a, b, c, d, e, f);
 	return tracer_start_call(self, &backup, &jmp);
 }
-
-int trace(int request, pid_t pid, caddr_t addr, int data) {
-	uint64_t authid = 0;
-	if(!(authid=kernel_get_ucred_authid(pid))) {
-		return -1;
-	}
-
-	if(kernel_set_ucred_authid(pid, 0x4800000000010003l)) {
-		return -1;
-	}
-	int res = ptrace(request, pid, addr, data);
-	if(kernel_set_ucred_authid(pid, authid)) {
-		return -1;
-	}
-    return res;
-}
 // any remaining attempts to use the templated call will fail
 
 int tracer_init(tracer_t *restrict self, int pid) {
-	uint64_t authid = 0;
-	if(!(authid=kernel_get_ucred_authid(pid))) {
-		return -1;
-	}
-
-	if(kernel_set_ucred_authid(pid, 0x4800000000010003l)) {
-		return -1;
-	}
+	uintptr_t current_ucred = get_current_ucred();
 	*self = (tracer_t) {
-		.original_authid = authid,
+		.original_authid = ucred_swap_authid(current_ucred, PTRACE_ID),
 		.syscall_addr = 0,
 		.libkernel_base = 0,
 		.errno_addr = 0,
@@ -103,9 +88,7 @@ int tracer_init(tracer_t *restrict self, int pid) {
 	} else {
 		if (tracer_ptrace(self, PT_ATTACH, self->pid, 0, 0) < 0) {
 			perror("ptrace PT_ATTACH tracer_init");
-			if(kernel_set_ucred_authid(self->pid, self->original_authid)) {
-				return -1;
-			}
+			ucred_set_authid(current_ucred, self->original_authid);
 			self->pid = 0;
 			return -1;
 		}
@@ -118,12 +101,10 @@ int tracer_finalize(tracer_t *restrict self) {
 	if (self->pid) {
 		if (tracer_ptrace(self, PT_DETACH, self->pid, 0, 0) < 0) {
 			perror("ptrace PT_DETACH tracer_finalize");
-			kernel_set_ucred_authid(self->pid, self->original_authid);
+			ucred_set_authid(get_current_ucred(), self->original_authid);
 			return -1;
 		}
-		if(kernel_set_ucred_authid(self->pid, self->original_authid)) {
-			return -1;
-		}
+		ucred_set_authid(get_current_ucred(), self->original_authid);
 	}
 	return 0;
 }
@@ -344,4 +325,24 @@ int tracer_setsockopt(tracer_t *restrict self, int s, int level, int optname, co
 		return err;
 	}
 	return 0;
+}
+
+void tracer_dump_registers(const reg_t *restrict regs) {
+	printf("rax: 0x%08llx\n", (unsigned long long)regs->r_rax);
+	printf("rbx: 0x%08llx\n", (unsigned long long)regs->r_rbx);
+	printf("rcx: 0x%08llx\n", (unsigned long long)regs->r_rcx);
+	printf("rdx: 0x%08llx\n", (unsigned long long)regs->r_rdx);
+	printf("rsi: 0x%08llx\n", (unsigned long long)regs->r_rsi);
+	printf("rdi: 0x%08llx\n", (unsigned long long)regs->r_rdi);
+	printf("r8:  0x%08llx\n", (unsigned long long)regs->r_r8);
+	printf("r9:  0x%08llx\n", (unsigned long long)regs->r_r9);
+	printf("r10: 0x%08llx\n", (unsigned long long)regs->r_r10);
+	printf("r11: 0x%08llx\n", (unsigned long long)regs->r_r11);
+	printf("r12: 0x%08llx\n", (unsigned long long)regs->r_r12);
+	printf("r13: 0x%08llx\n", (unsigned long long)regs->r_r13);
+	printf("r14: 0x%08llx\n", (unsigned long long)regs->r_r14);
+	printf("r15: 0x%08llx\n", (unsigned long long)regs->r_r15);
+	printf("rbp: 0x%08llx\n", (unsigned long long)regs->r_rbp);
+	printf("rsp: 0x%08llx\n", (unsigned long long)regs->r_rsp);
+	printf("rip: 0x%08llx\n", (unsigned long long)regs->r_rip);
 }

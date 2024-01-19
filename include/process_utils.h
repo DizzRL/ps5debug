@@ -65,5 +65,6 @@ uintptr_t sys_proc_alloc(tracer_t* tracer, int pid, uintptr_t length);
 uintptr_t sys_proc_free(tracer_t* tracer, int pid, uintptr_t address, uintptr_t length);
 int sys_proc_protect(int pid, uint64_t address, int prot);
 int sys_proc_protect_by_name(int pid, const char* name, int prot);
+uintptr_t proc_get_ucred(uintptr_t proc);
 
 #endif
