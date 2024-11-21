@@ -10,8 +10,6 @@
 #include "utils.h"
 
 int main() {
-    pid_t pid = getpid();
-    jailbreak_process(pid, true);
     printf_notification("PS5Debug v0.0.1 Loaded\nBy Dizz");
     ScePthread broadcastThread;
     scePthreadCreate(&broadcastThread, 0, (void*)broadcast_thread, 0, "broadcast_thread");

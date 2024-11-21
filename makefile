@@ -13,44 +13,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; see the file COPYING. If not see
 # <http://www.gnu.org/licenses/>.
-
-ifndef PS5_PAYLOAD_SDK
+ifdef PS5_PAYLOAD_SDK
+    include $(PS5_PAYLOAD_SDK)/toolchain/prospero.mk
+else
     $(error PS5_PAYLOAD_SDK is undefined)
 endif
 
-PS5_HOST ?= PS5IP
-PS5_PORT ?= EFLLDR_PORT
+ELF := ps5debug.elf
 
-ELF := $(shell basename $(CURDIR)).elf
-
-CC := $(PS5_PAYLOAD_SDK)/host/x86_64-ps5-payload-cc
-LD := $(PS5_PAYLOAD_SDK)/host/x86_64-ps5-payload-ld
-
-ODIR   := build
-IDIRS   := -I. -Iinclude -IlibNidResolver/include
-CFLAGS := $(IDIRS) -O2
-LDADD  := -lSceLibcInternal -lkernel_sys -lSceNet
-SDIR   := source
-NIDDIR := libNidResolver/source
-CFILES := $(wildcard $(SDIR)/*.c)
-SFILES := $(wildcard $(SDIR)/*.s)
-OBJS   := $(patsubst $(SDIR)/%.c, $(ODIR)/%.o, $(CFILES)) $(patsubst $(SDIR)/%.s, $(ODIR)/%.o, $(SFILES))
+CFLAGS := -Wall -O2 -Iinclude -lSceLibcInternal -lkernel_sys -lSceNet
 
 all: $(ELF)
 
-$(ODIR)/%.o: $(SDIR)/%.c
-	$(CC) -c $(CFLAGS) -o $@ $^
+CFILES := $(wildcard source/*.c)
 
-$(ELF): $(OBJS)
-	$(LD) $^ $(LDADD) -o $(ELF)
-
-$(ODIR):
-	@mkdir $@
-
-.PHONY: clean
+$(ELF): $(CFILES)
+	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f $(ELF) $(ODIR)/*.o
-
-test: $(ELF)
-	nc -q0 $(PS5_HOST) $(PS5_PORT) < $^
+	rm -f $(ELF)
