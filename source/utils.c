@@ -22,12 +22,12 @@ void *pfmalloc(size_t size) {
 }
 
 void printf_notification(const char* fmt, ...) {
-    notify_request_t noti_buffer;
-
+    notify_request_t req = {0};
     va_list args;
     va_start(args, fmt);
-    vsprintf(noti_buffer.message, fmt, args);
+    vsnprintf(req.message, sizeof req.message, fmt, args);
     va_end(args);
 
-    sceKernelSendNotificationRequest(0, (notify_request_t * ) & noti_buffer, sizeof(noti_buffer), 0);
+    sceKernelSendNotificationRequest(0, &req, sizeof req, 0);
+    klog_puts(req.message);
 }
