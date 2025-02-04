@@ -19,11 +19,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Environment Variables
-      run: |
-        export CFLAGS="-Wno-error"
-        export CXXFLAGS="-Wno-error"
-
     - name: Install dependencies
       run: |
         sudo apt update
