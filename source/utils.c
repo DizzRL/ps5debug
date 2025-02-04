@@ -3,6 +3,7 @@
 #include <sys/syscall.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <ps5/klog.h>
 #include "utils.h"
 #include "libsce_defs.h"
 

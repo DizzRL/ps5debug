@@ -40,7 +40,7 @@ jobs:
         subject-path: ./ps5debug.elf
 
     - name: Upload
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: PS5Debug
         path: ./ps5debug.elf
