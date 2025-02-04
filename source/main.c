@@ -10,6 +10,8 @@
 #include "utils.h"
 #include <signal.h>
 #include <sys/syscall.h>
+#include <stdlib.h>
+#include <sys/sysctl.h>
 
 static pid_t
 find_pid(const char* name) {
